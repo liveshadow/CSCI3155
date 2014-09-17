@@ -1,0 +1,7 @@
+What does it mean for code to be "well-typed?"
+
+More complicated examples of binding? What does bound mean and how does it behave in recursion?
+
+What are parentheses in Scala? What do they do? See problem 1b.
+
+Object language versus meta language? And what is each - Javascripty is the object langauge and Scala is the meta language?
