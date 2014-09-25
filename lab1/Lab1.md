@@ -8,12 +8,18 @@ Olivia Abrant
 
 Partner: Michelle Soult
 
-1. Scala Basics: Binding and Scope
-  - pi at line 4 is bound at line 3; pi at line 7 is bound at line 1
-  - x at line 3 is bound at line 2; x at line 6 is bound at line 5;
-    x at line 10 is bound at line 5; x at line 13 is bound at line 1
+#### 1. Scala Basics: Binding and Scope
+##### (a)
+  * pi at line 4 is bound at line 3 because pi is redefined within the scope with val pi = 3.14159
+  * pi at line 7 is bound at line 1 because line 7 is outside the scope of circumference()
+
+##### (b)  
+  * x at line 3 is bound at line 2 because x is referenced in the function declaration
+  * x at line 6 is bound at line 5 because x is referenced in the case match
+  * x at line 10 is bound at line 5 because x is outside the scope where val x is set to y + 1, so the previous referenc is, again, the case match
+  * x at line 13 is bound at line 1 because line 13 is outside the scope of function f, so the previous place where x is referenced is line 1, with val x = 3
 			
-2. Scala Basics: Typing
+#### 2. Scala Basics: Typing
   - Yes, the body of g is well-typed: the function returns a tuple of a tuple and an int.
     - g(x) : ((Int, Int), Int) because
       - (b, 1) : ((Int, Int), Int) because
