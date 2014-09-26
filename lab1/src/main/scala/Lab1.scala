@@ -77,51 +77,82 @@ object Lab1 extends jsy.util.JsyApplication {
 
   def abs(n: Double): Double =
   {
-  if (n < 0 )
-    (-n)
-  else
-    n
+    if (n < 0 )     // test if n is less than 0; if so, return the negative of n
+      (-n)
+    else            // if n is greater than or equal to 0, just return n
+      n
+
+    /*
+    alternate method:
+    n match
+    {
+      case x if x < 0 => -x
+      case x => x
+    }
+    */
   }
 
   def xor(a: Boolean, b: Boolean): Boolean =
   {
+    // have to be opposite values to return true
+
     if (a)
       if (b) false else true
     else
       if (b) true else false
+
+    /*
+    alternate method:
+    (a, b) match
+    {
+      case (true, true) => false
+      case (true, false) => true
+      case (false, true) => true
+      case (false, false) => false
+    }
+    */
   }
 
   def repeat(s: String, n: Int): String = 
   {
-    require (n >= 0)    //would use require here? or assert would be better? difference?
+    require (n >= 0)      // require makes sure the user is inputting a valid input
     n match
     {
-      case 0 => ""    //does this case actually do anything? still fail 18 tests
-      case 1 => s
+      case 0 => ""    // test for whether n = 0
+      case 1 => s     // may not even need this - base case is case 0 where n = 0
       case _ => s + repeat(s, n-1)
     }
+
+    /*
+    alternate method:
+    if (n = 0)
+      return ""
+    else
+      s + repeat(s, n-1)
+    */
   }
   
   def sqrtStep(c: Double, xn: Double): Double =
   {
-    (xn - ((Math.pow(xn, 2) - c) / (2*xn)))
+    (xn - ((Math.pow(xn, 2) - c) / (2*xn)))     // math function from handout. literally.
   }
 
   def sqrtN(c: Double, x0: Double, n: Int): Double =
   {
-    require (c >= 0)    //can't find sqrt of negative number
-    require (n >= 0)
+    require (c >= 0)    // can't find sqrt of negative number
+    require (n >= 0)    // can't find less than 0 approximations
     def helper (c : Double, x : Double, n : Int): Double =
+    // recommended to use a helper function in the handout, but theoretically, should just be able to keep overwriting val approx?
     {
-      val approx = sqrtStep(c, x)
+      val approx = sqrtStep(c, x)     // set the approximation each time through helper to sqrtStep() of the new x
       n match 
       {
-        case 0 => x
-        case 1 => approx
-        case _ => helper(c, approx, n-1)
+        case 0 => x       // if n = 0, meaning there are no approximation steps
+        case 1 => approx    // return first step of approximation, which is what you do in function sqrtStep()
+        case _ => helper(c, approx, n-1)    // use prior approximation of sqrt(c) in the recursive call of helper, recurse until n = 1
       }
     }
-    helper(c, x0, n)
+    helper(c, x0, n)      // call helper on the original c, the initial guess xO (given by the tester), and n (the number of times we should approximate)
   }
   
   def sqrtErr(c: Double, x0: Double, epsilon: Double): Double =
@@ -129,10 +160,20 @@ object Lab1 extends jsy.util.JsyApplication {
     require (epsilon > 0)
     def helper(c : Double, x : Double): Double =
     {
-      val approx = sqrtStep(c, x)
-      val error = abs(Math.pow(approx, 2) - c)
-      if (error < epsilon) approx
-      else helper(c, approx)
+      val approx = sqrtStep(c, x)     // set the approximation each time through helper to sqrtStep of the new x
+      val error = abs(Math.pow(approx, 2) - c)    // calculate the error with |x^2 - c| - squares the approximation and compares it to c
+      if (error < epsilon) approx     // if the error is less than epsilon, it's what we want
+      else helper(c, approx)      // otherwise recurse with the new approximation
+      
+      /*
+      alternate method:
+      error match       // match to error to test if error is less than epsilon
+      {
+        case error if error < epsilon => approx
+        case _ => helper(c, approx)     // if it's not, recurse with the new approximation
+      }
+      */
+
     }
     helper(c, x0)
   }
@@ -152,37 +193,42 @@ object Lab1 extends jsy.util.JsyApplication {
   {
     def check(t: SearchTree, min: Int, max: Int): Boolean = 
     {
-      t match
+      t match     // matches the instance of IntTree, t 
       {
-        case Empty => true
-        case Node(l, d, r) => (d >= min) && (d < max) && check(l, min, d) && check(r, d, max)
+        case Empty => true      // if t is empty, it's automatically valid
+        case Node(l, d, r) => (d >= min) && (d < max) && check(l, min, d) && check(r, d, max)     // what is this doing?
       }
     }
-    check(t, Int.MinValue, Int.MaxValue)
+    check(t, Int.MinValue, Int.MaxValue)      // call check with the absolute min and absolute max of Int
   }
   
-  def insert(t: SearchTree, n: Int): SearchTree =
+  def insert(t: SearchTree, n: Int): SearchTree =     // want to return a new tree with the new node n
   {
     t match
     {
-      case Empty => Node(Empty, n, Empty)
-      case Node(l, d, r) => if (n >= d) Node(l, d, insert(r, n)) else Node(insert(l, n), d, r)
+      case Empty => Node(Empty, n, Empty)     // if t is empty, then add n with no left or right nodes
+      case Node(l, d, r) => if (n >= d) Node(l, d, insert(r, n)) else Node(insert(l, n), d, r)    
+      // otherwise, recurse through t and compare n to the data at each node - if it's greater then call insert() again on the right child
+      // if it's less then call insert() again on the left child
     }
   }
   
-  def deleteMin(t: SearchTree): (SearchTree, Int) =
+  def deleteMin(t: SearchTree): (SearchTree, Int) =     // want to return what you delete
   {
-    require(t != Empty)
-    (t: @unchecked) match
+      // WHAT IF THE TREE ISN'T A VALID SERACH TREE???
+      // Shouldn't we call repOk() first to make sure the nodes are all in the right places?
+
+    require(t != Empty)     // because can't delete anything from an empty tree
+    (t: @unchecked) match     // not sure about this @unchecked
     {
-      case Node(Empty, d, r) => (r, d)
+      case Node(Empty, d, r) => (r, d)    // if the left node is empty, then the node you're at is the min, so delete it and return
       case Node(l, d, r) =>
-        val (l1, m) = deleteMin(l)
+        val (l1, m) = deleteMin(l)      // otherwise, do some stuff... ?
         (Node(l1, d, r), m)
     }
   }
  
-  def delete(t: SearchTree, n: Int): SearchTree =
+  def delete(t: SearchTree, n: Int): SearchTree =     // removes the first node it finds with data value equal to n
   {
     (t: @unchecked) match
     {
@@ -207,7 +253,7 @@ object Lab1 extends jsy.util.JsyApplication {
                         case _ => throw new UnsupportedOperationException
                      }
     case Binary(bop, e1, e2) => bop match {
-                            case Plus => (eval(e1) + eval(e2))
+                          case Plus => (eval(e1) + eval(e2))
                           case Minus => (eval(e1) - eval(e2))
                           case Times => (eval(e1) * eval(e2))
                           case Div => (eval(e1) / eval(e2))
