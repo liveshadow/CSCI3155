@@ -196,8 +196,24 @@ object Lab1 extends jsy.util.JsyApplication {
       t match     // matches the instance of IntTree, t 
       {
         case Empty => true      // if t is empty, it's automatically valid
-        case Node(l, d, r) => (d >= min) && (d < max) && check(l, min, d) && check(r, d, max)     // what is this doing?
+        case Node(l, d, r) => (d >= min) && (d < max) && check(l, min, d) && check(r, d, max)     
+        // tests if 
+        // 1) data at node is greater than or equal to the min
+        // 2) data at node is less than the max 
+        // 3) whether the node to the left is a valid node, with the left node as the new tree, the min as the min, and the data at 
+          // the current node as the new max; since we're moving left, everything should be smaller than the current node 
+        // 4) whether the node to the right is a valid node, with the right node as the new tree, the data at the current node as the 
+          // new min, and the max as the max; since we're moving right, everything should be bigger than or equal to the current node
+        // ALL 4 CASES MUST BE TRUE TO RETURN TRUE
       }
+    /*
+    alternate method:
+    if (t == Empty) true      // valid syntax?
+    else
+      if (d >= min) && (d < max) && check(l, min, d) && check(r, d, max) true
+      else false
+    */
+
     }
     check(t, Int.MinValue, Int.MaxValue)      // call check with the absolute min and absolute max of Int
   }
@@ -206,35 +222,57 @@ object Lab1 extends jsy.util.JsyApplication {
   {
     t match
     {
-      case Empty => Node(Empty, n, Empty)     // if t is empty, then add n with no left or right nodes
+      case Empty => Node(Empty, n, Empty)     // if t is empty or you've hit the end, then add n with no left or right nodes
       case Node(l, d, r) => if (n >= d) Node(l, d, insert(r, n)) else Node(insert(l, n), d, r)    
       // otherwise, recurse through t and compare n to the data at each node - if it's greater then call insert() again on the right child
       // if it's less then call insert() again on the left child
+      // have to call insert() inside Node() because we can't change vals, so we have to return nodes pointing to nodes pointing to nodes
+      // and creating a new tree instead of just adjusting pointers
     }
+    /*
+    alternate method:
+    if (t == Empty) Node(Empty, n, Empty)
+    else
+      if (n >= d) Node(, d, insert(r, n))
+      else Node(insert(l, n), d, r)
+    */
   }
   
-  def deleteMin(t: SearchTree): (SearchTree, Int) =     // want to return what you delete
+  def deleteMin(t: SearchTree): (SearchTree, Int) =     // want to return a tuple of the new tree and the node you delete
   {
       // WHAT IF THE TREE ISN'T A VALID SERACH TREE???
       // Shouldn't we call repOk() first to make sure the nodes are all in the right places?
+      // this comes into play with the base case, since if the tree isn't valid the last node on the left may not be the min
 
     require(t != Empty)     // because can't delete anything from an empty tree
-    (t: @unchecked) match     // not sure about this @unchecked
+    (t: @unchecked) match     // tells the compiler to ignore the fact that t is not exhaustive (i.e. t could be empty, but we don't care
+                              // because we required t != Empty above)
     {
-      case Node(Empty, d, r) => (r, d)    // if the left node is empty, then the node you're at is the min, so delete it and return
-      case Node(l, d, r) =>
-        val (l1, m) = deleteMin(l)      // otherwise, do some stuff... ?
+      case Node(Empty, d, r) => (r, d)    // if the left node is empty, then the node you're at is the min, so delete it and return the value 
+                                          // of the node to the right and the current node (so that the new tree we create is still connected)
+      case Node(l, d, r) =>       // otherwise, the left is not empty
+        val (l1, m) = deleteMin(l)      // set the tuple of the new left value (which is the right node of the node we just deleted)
         (Node(l1, d, r), m)
     }
+    /*
+    alternate method:
+    if Node(Empty, d, r) (r, d)
+    else
+    {
+      val (l1, m) = deleteMin(l)
+      (Node(l1, d, r), m)
+    }
+    */
   }
  
   def delete(t: SearchTree, n: Int): SearchTree =     // removes the first node it finds with data value equal to n
   {
     (t: @unchecked) match
     {
-      case Empty => Empty
-      case Node(Empty, d, Empty) => if (d == n) Empty else t
-      case Node(l, d, r) => if (n < d) Node(delete(l, n), d, r)
+      case Empty => Empty       // return empty since there is no node
+      case Node(Empty, d, Empty) => if (d == n) Empty else t      // only one node or finished recursing
+                                                                  // if the data equals what we want, remove it and return empty tree/rest of the tree
+      case Node(l, d, r) => if (n < d) Node(delete(l, n), d, r)   // if n < d 
                   else if (n == d) 
                   {
                     val (l1, m) = deleteMin(r)
