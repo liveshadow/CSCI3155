@@ -64,7 +64,7 @@ ii. These grammars generate the same expression, but they go about it in opposit
 
 ##### (b)
 
-The "-" operator has precedence over the "<<" operator. I tested multiple orderings of the operators such as "2-3<<2" and "2<<2-3" and in both cases the "-" took precedence. Then I tried putting paranthese around "-", such as with "2<<4-3" and "2<<(4-3)" and each gave the same result, indicating that the "-" was executing first in both cases.
+The "-" operator has precedence over the "<<" operator. I tested multiple orderings of the operators such as "2-3<<2" and "2<<2-3" and in both cases the "-" took precedence. Then I tried putting parentheses around "-", such as with "2<<4-3" and "2<<(4-3)" and each gave the same result, indicating that the "-" was executing first in both cases.
 
 Examples:
 
@@ -80,6 +80,7 @@ Examples:
       E ::= "E"i | "E"ib | ∈
       i ::= 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
+      Where 0-9, ., -, and E are in the set ∑
 
 
 
