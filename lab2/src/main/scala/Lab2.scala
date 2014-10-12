@@ -33,10 +33,10 @@ object Lab2 extends jsy.util.JsyApplication {
    * need.
    */
   
-  type Env = Map[String, Expr]
+  type Env = Map[String, Expr]    // map from variables to values, basically all your bound variables
   val emp: Env = Map()
   def get(env: Env, x: String): Expr = env(x)
-  def extend(env: Env, x: String, v: Expr): Env = {
+  def extend(env: Env, x: String, v: Expr): Env = {     // extends the environment to include the new map stuff, new variables and such
     require(isValue(v))
     env + (x -> v)  
     
@@ -70,22 +70,28 @@ object Lab2 extends jsy.util.JsyApplication {
     require(isValue(v))
     (v: @unchecked) match {
       case B(b) => b
+      case null => false
+      case Undefined => false
       case N(0) => false
-      case N(Double.NaN) => false
+      //case N(Double.NaN) => false
+      case N(n) => if n.isNaN() => false
       case N(_) => true
       case S("") => false // empty string is false
       case S(_) => true // everything else is true
-      case Undefined => false
     }
   }
   
   def toStr(v: Expr): String = {
     require(isValue(v))
     (v: @unchecked) match {
+      case N(n) if n.isWhole() => val x = n.toInt; x.toString     // convert number to string
+      case N(n) => n.toString
       case S(s) => s
       case N(n) => n.toString
-      case B(true) => "true"
-      case B(false) => "false"
+      //case B(true) => "true"
+      //case B(false) => "false"
+      case B(b) => b.toString
+      case S(s) => s
       case Undefined => "undefined"
     }
   }
@@ -102,22 +108,33 @@ object Lab2 extends jsy.util.JsyApplication {
       /* Inductive Cases */
       case Print(e1) => println(pretty(eToVal(e1))); Undefined
       
-      case Var(x) => get(env, x) // get returns env(x); env is basically a map from strings to expressions
+      case Var(x) => get(env, x) // get returns env(x); env is basically a map from strings to expressions 
 
      /*
-      * should extend the environment with the first expression results bound to the 
+      * ConstDecl should extend the environment with the first expression results bound to the 
       * identifier (WHAT DOES THIS MEAN?), and then eval the second expression WITH THE NEW ENVIRONMENT
       * extend declared above: env + (x -> v)
       */
       
       case ConstDecl(x, e1, e2) => eval(extend(env, x, eval(env, e1)), e2)
       
+      
+      // Unary: (uop, e1)
       case Unary(Neg, e1) => N(-toNumber(eval(env, e1)))
       
       case Unary(Not, e1) => B(!toBoolean(eval(env, e1)))
+
+      case Unary(_, e1) => throw new UnsupportedOperationException
       
-      case Binary(Plus, e1, e2) => N(toNumber(eval(env, e1)) + toNumber(eval(env, e2)))
-      
+      // Binary: (bop, e1, e2)
+      case Binary(Plus, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+        case (N(e1), N(e2)) => N(e1 + e2)
+        case (S(e1), S(e2)) => S(e1 + e2) // need to handle string cases for autograder
+        case (_, S(e2)) => S(toStr(e1) + e2) 
+        case (S(e1), _) => S(e1 + toStr(e2))
+        case (_, _) => N(toNumber(eval(env,e1)) + toNumber(eval(env, e2))) // original case 
+      }
+
       case Binary(Minus, e1, e2) => N(toNumber(eval(env, e1)) - toNumber(eval(env, e2)))
       
       case Binary(Times, e1, e2) => N(toNumber(eval(env, e1)) * toNumber(eval(env, e2)))
@@ -128,19 +145,42 @@ object Lab2 extends jsy.util.JsyApplication {
 
       case Binary(Ne, e1, e2) => B(eval(env, e1) != eval(env, e2))
 
-      case Binary(Lt, e1, e2) => B(toNumber(eval(env, e1)) < toNumber(eval(env, e2)))
+      case Binary(Lt, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+        case (N(e1), N(e2)) => B(e1 < e2)
+        case (S(e1), S(e2)) => B(e1 < e2)
+        case (N(e1), _) => B(e1 < toNumber(eval(env, e2)))
+        case (_, N(e2)) => B(toNumber(eval(env, e1)) < e2) //need to handle this for test
+        case (_, _) => B(toNumber(eval(env, e1)) < toNumber(eval(env, e2)))
+      }
 
-      case Binary(Le, e1, e2) => B(toNumber(eval(env, e1)) <= toNumber(eval(env, e2)))
+      case Binary(Le, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+        case (N(e1), N(e2)) => B(e1 <= e2)
+        case (S(e1), S(e2)) => B(e1 <= e2)
+        case (N(e1), _) => B(e1 <= toNumber(eval(env, e2)))
+        case (_, N(e2)) => B(toNumber(eval(env, e1)) <= e2)
+        case (_,_) => B(toNumber(eval(env, e1)) <= toNumber(eval(env, e2)))
+      }
 
-      case Binary(Gt, e1, e2) => B(toNumber(eval(env, e1)) > toNumber(eval(env, e2)))
+      case Binary(Gt, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+        case (N(e1), N(e2)) => B(e1 > e2)
+        case (S(e1), S(e2)) => B(e1 > e2)
+        case (N(e1), _) => B(e1 > toNumber(eval(env, e2)))
+        case (_, N(e2)) => B(toNumber(eval(env, e1)) > e2)
+        case (_, _) => B(toNumber(eval(env, e1)) > toNumber(eval(env, e2))) //must compare numbers
+      }
 
-      case Binary(Ge, e1, e2) => B(toNumber(eval(env, e1)) >= toNumber(eval(env, e2)))
-      
+      case Binary(Ge, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+        case (N(e1), N(e2)) => B(e1 >= e2)
+        case (S(e1), S(e2)) => B(e1 >= e2)
+        case (N(e1), _) => B(e1 >= toNumber(eval(env, e2)))
+        case (_, N(e2)) => B(toNumber(eval(env, e1)) >= e2)
+        case (_,_) => B(toNumber(eval(env, e1)) >= toNumber(eval(env, e2)))
+      }
+
       /*
        * And and Or return either the first value that makes the expression false
        * or the last value that makes the expression true
        * as said by Erik Eakins
-       * 
        */
       
       case Binary(And, e1, e2) => if (toBoolean(eval(env, e1)) == false) eval(env, e1) else (eval(env, e2))
@@ -164,7 +204,15 @@ object Lab2 extends jsy.util.JsyApplication {
   }
     
   // Interface to run your interpreter starting from an empty environment.
-  def eval(e: Expr): Expr = eval(emp, e)
+  def eval(e: Expr): Expr = {
+    /*debugging */
+    /*
+    println("Expression start")
+    println(e)
+    println("Expression end")
+    */
+    eval(emp, e)
+  }
 
   // Interface to run your interpreter from a string.  This is convenient
   // for unit testing.

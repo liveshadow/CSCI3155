@@ -9,7 +9,7 @@ Partner: Michelle Soult
       ––––––––––––    ––––––––––––    }  Axioms
       a ∈ VObjects    b ∈ VObjects    }
 
-      S ∈ VObjects    s1 ∈ AObjects  s2 ∈ AObjects
+      s ∈ VObjects    s1 ∈ AObjects  s2 ∈ AObjects
       ––––––––––––    ––––––––––––––––––––––––––––
       s ∈ AObjects         s1 & s2 ∈ AObjects 
 
@@ -34,10 +34,10 @@ Partner: Michelle Soult
 
     1.
         S ::=> AaBb
-            => baBb
-            => baab
+            => baBb  (Rule 2)
+            => baab  (Rule 3)
     4.
-        S ::=> AaBb
+        S ::=> AaBb  
             => AbaBb
             => bbaBb
             => bbaab
@@ -74,20 +74,14 @@ Examples:
   * 2<<(4-3) = 4
 
 ##### (c)
-      S ::= a "." b E
+      S ::= a.b E
       a ::= 0 | i | -i
       b ::= 0 | i | 0b | ib
-      E ::= "E"i | "E"ib | ∈
+      e ::= Ei | Eib | ∈
       i ::= 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
       Where 0-9, ., -, and E are in the set ∑
-
-
-
-
-
-
-
+      and ∈ is the empty string
 
 
 
