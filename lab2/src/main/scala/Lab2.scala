@@ -74,7 +74,7 @@ object Lab2 extends jsy.util.JsyApplication {
       case Undefined => false
       case N(0) => false
       //case N(Double.NaN) => false
-      case N(n) => if n.isNaN() => false
+      case N(n) if n.isNaN() => false
       case N(_) => true
       case S("") => false // empty string is false
       case S(_) => true // everything else is true
@@ -87,11 +87,9 @@ object Lab2 extends jsy.util.JsyApplication {
       case N(n) if n.isWhole() => val x = n.toInt; x.toString     // convert number to string
       case N(n) => n.toString
       case S(s) => s
-      case N(n) => n.toString
       //case B(true) => "true"
       //case B(false) => "false"
       case B(b) => b.toString
-      case S(s) => s
       case Undefined => "undefined"
     }
   }
