@@ -3,10 +3,10 @@ object Lab3 extends jsy.util.JsyApplication {
   
   /*
    * CSCI 3155: Lab 3 
-   * Michelle Soult
+   * Olivia Abrant
    * 
-   * Partner: Erik Eakins
-   * Collaborators: <Any Collaborators>
+   * Partner: Catherine Dewerd
+   * Collaborators: Jessica Lynch, Max Harris, Michelle Soult, Erik Eakins, Alok Joshi
    */
 
   /*
@@ -102,6 +102,22 @@ object Lab3 extends jsy.util.JsyApplication {
     }
   }
   
+  // write equalityVal
+  def equalityVal(e: Expr, bop: Bop, v1: Expr, v2: Expr): Boolean = {
+  require(isValue(v1))
+  require(isValue(v2))
+  //require(bop == Eq || bop == Ne)
+    (v1, v2) match {
+    case (Function(_, _, _), _) => throw DynamicTypeError(e)    // entire original expression passed in was a problem, so return full expression (e)
+    case (_, Function(_, _, _)) => throw DynamicTypeError(e)    // same thing
+    case _ =>
+        (bop: @unchecked) match {
+        case Eq => v1 == v2
+        case Ne => v1 != v2
+        }
+    }
+  }
+
   /* Big-Step Interpreter with Dynamic Scoping */
   
   /*
@@ -110,9 +126,11 @@ object Lab3 extends jsy.util.JsyApplication {
    * replace it with your code from Lab 2.
    */
   def eval(env: Env, e: Expr): Expr = {
+    
     def eToN(e: Expr): Double = toNumber(eval(env, e))
     def eToB(e: Expr): Boolean = toBoolean(eval(env, e))
     def eToVal(e: Expr): Expr = eval(env, e)
+    
     e match {
       /* Base Cases */
       case _ if isValue(e) => e
@@ -134,18 +152,9 @@ object Lab3 extends jsy.util.JsyApplication {
       case Binary(Div, e1, e2) => N(eToN(e1) / eToN(e2))
       
       case Binary(bop @ (Eq | Ne), e1, e2) => {
-        /*in rule EVALEQUALITY, we disallow equality and disequality checks
-      on function values.*/
-        (eToVal(e1), eToVal(e2)) match {
-            case (Function(_,_,_), _) => throw DynamicTypeError(e)
-            case (_, Function(_,_,_)) => throw DynamicTypeError(e)
-            case(_, _) => {
-              if (bop == Eq) B(eToVal(e1) == eToVal(e2))
-              else B(eToVal(e1) != eToVal(e2))
-            }
-        }
+        println("inside Eq or Ne")
+        B(equalityVal(e, bop, eToVal(e1), eToVal(e2)))
       }
-      
       case Binary(bop @ (Lt|Le|Gt|Ge), e1, e2) => B(inequalityVal(bop, eToVal(e1), eToVal(e2)))
       
       case Binary(And, e1, e2) => 
@@ -161,32 +170,26 @@ object Lab3 extends jsy.util.JsyApplication {
       
       case ConstDecl(x, e1, e2) => eval(extend(env, x, eToVal(e1)), e2)
       
-      /* One thing you should observe is that all of the rules are implemented,
-    except for EVALCALL, EVALCALLREC, and part of EVALEQUALITY. In essence, implementing
-    those rules is your task for this question. 
-    EVALCALL
-    */
-
-      case Call(e1, e2) => (eToVal(e1), eToVal(e2)) match{
-        /* Not recursive - anonymous function */
-        case (Function(None, x, e), expr) => {
-          val v2 = eval(env, expr)
-          val newenv = extend(env, x, v2)
-          eval(newenv, e)         //the expression of the function; evaluate with new binding
+      case Call(e1, e2) => eToVal(e1) match {
+        // where s1 in Function is e' in the judgement form - body of function
+        // Function evaluates using the value of e2 as its parameter
+        // case class Function(p: Option[String], x: String, e1: Expr) extends Expr
+      // def extend(env: Env, x: String, v: Expr): Env =
+        case Function(p, x, s1) => p match {    // p is of type Option, testing for whether the function name exists - refer to Function definition
+            case None => {
+              println("gets to case None")
+              eval(extend(env, x, eToVal(e2)), s1)    // evaluate body of function with parameter set to the thing being passed in, non-recursive functions
+            }
+            case Some(p1) => eval(extend(extend(env, p1, eToVal(e1)), x, eToVal(e2)), s1)
+          // p1 is of type string - name of the function
+          // if the function has a name, extend the environment with the extended
+          // environment of the name being set to e1, and the argument x being set
+          // to e2
         }
-          /* Recursive - named or known expression */
-         case (Function(Some(f), x2, fbody), v2) => { //function has some name
-           val env1 = extend(env, x2, v2)
-           val env2 = extend(env1, f, Function(Some(f), x2, fbody))
-                     
-           eval(env2, fbody)                  //evaluate function expression with new binding
-         
-         }
-         
-         case _ => throw DynamicTypeError(e)
+        case _ => throw new DynamicTypeError(e)   // parameter e passed into eval()
       }
-     
-     case _ => throw DynamicTypeError(e)
+      
+      case _ => throw new UnsupportedOperationException
     }
   }
     
@@ -196,107 +199,128 @@ object Lab3 extends jsy.util.JsyApplication {
   def substitute(e: Expr, v: Expr, x: String): Expr = {
     require(isValue(v))
     /* Simple helper that calls substitute on an expression
-     * with the input value v and variable name x. */
+     * with the input value v and variable name x in function body. */
     def subst(e: Expr): Expr = substitute(e, v, x)
     /* Body */
     e match {
-      case N(_) | B(_) | Undefined | S(_) | Function(_,_,_)=> e
+      case N(_) | B(_) | Undefined | S(_) | Function(_,_,_) => e
       case Print(e1) => Print(subst(e1))
-      case Var(y) => if (y == x) v else Var(y)
-      case Unary(uop, e1) => Unary(uop, substitute(e1, v, x))
-      case Binary(bop, e1, e2) => Binary(bop, substitute(e1, v, x), substitute(e2, v, x))
-      case ConstDecl(y,e1, e2) => ConstDecl(y, subst(e1), if (x == y) e2 else subst(e2))
-      case Call(e1, e2) => Call(subst(e1), subst(e2))
+      case Var(x1) => if(x1 == x) v else Var(x1)
+
+      /*
+      case Function(p, x1, e1) => p match {
+        case None => if (x1 == x) v else subst(e1)
+        case Some(p) => if (x1 == x) 
+      } */
+
+      case Unary(uop, e1) => Unary(uop, subst(e1))
+      case Binary(bop, e1, e2) => Binary(bop, subst(e1), subst(e2))
+      case ConstDecl(x1, e1, e2) => ConstDecl(x1, subst(e1), if (x1 == x) e2 else subst(e2))
       case If(e1, e2, e3) => If(subst(e1), subst(e2), subst(e3))
-      case _ => throw DynamicTypeError(e)
+      case Call(e1, e2) => Call(subst(e1), subst(e2))
+      
+      case _ => throw new UnsupportedOperationException
     }
   }
     
-  def step(e: Expr): Expr = {println(e);
+  def step(e: Expr): Expr = {
+    println(e)
     e match {
-      
       /* Base Cases: Do Rules */
+            
       case Print(v1) if isValue(v1) => println(pretty(v1)); Undefined
       
         // ****** Your cases here
-      /* Do Rules con't */
-      case Unary(Neg, v) if isValue(v) => N(- toNumber(v))
-      case Unary(Not, v) if isValue(v) => B( ! toBoolean(v))
-      case Binary(Seq, v1, e2) if isValue(v1) => v1; e2
-      case Binary(Plus, v1, v2) if isValue(v1) && isValue(v2) => (v1, v2) match {
-        case(S(v1), _) => S(v1 + toStr(v2))
-        case(_, S(v2)) => S(toStr(v1) + v2)
-        case(_, _) => N(toNumber(v1) + toNumber(v2))
+      // isValue(v) makes sure that expression is a value - base case
+      case Unary(Neg, v1) if isValue(v1) => N(-toNumber(v1))
+      
+      case Unary(Not, v1) if isValue(v1) => B(!toBoolean(v1))
+      
+      case Binary(Seq, v1, e2) if isValue(v1) => e2
+      
+      case Binary(Plus, v1, v2) if isValue(v1) && isValue(v2) => {
+        (v1, v2) match {
+          case (S(v1), _) => S(v1 + toStr(v2))
+          case (_, S(v2)) => S(toStr(v1) + v2)
+          case _ => N(toNumber(v1) + toNumber(v2))
+        }
       }
-      /* Do Arith */
+      
       case Binary(Minus, v1, v2) if isValue(v1) && isValue(v2) => N(toNumber(v1) - toNumber(v2))
       case Binary(Times, v1, v2) if isValue(v1) && isValue(v2) => N(toNumber(v1) * toNumber(v2))
       case Binary(Div, v1, v2) if isValue(v1) && isValue(v2) => N(toNumber(v1) / toNumber(v2))
       
-      /* Do inequality: number, number2, string */
-      case Binary(bop @ (Lt|Le|Gt|Ge), v1, v2) if isValue(v1) && isValue(v2) => B(inequalityVal(bop, v1, v2))
-       
-      case Binary(bop @ (Eq | Ne), v1, v2)  => (v1, v2) match{
-        case (Function(_, _, _), _) => throw new DynamicTypeError(e)
-        case (_, Function(_,_,_)) => throw new DynamicTypeError(e)
-        case (v1, v2) if isValue(v1) && isValue(v2) => {
-          if (bop == Eq) B(v1 == v2)
-          else B(v1 != v2)
+      case Binary(bop @ (Lt|Le|Gt|Gt), v1, v2) if isValue(v1) && isValue(v2) => B(inequalityVal(bop, v1, v2))   
+      // because inequalityVal() takes care of the case where they are both strings and compares the strings, otherwise converts to numbers and compares
+      
+      case Binary(bop @ (Eq|Ne), v1, v2) if isValue(v1) && isValue(v2) => B(equalityVal(e, bop, v1, v2))
+      // equalityVal() takes care of the case where either v1 or v2 is a Function, in which case it throws a DynamicTypeError, otherwise compares
+      
+      case Binary(And, v1, e2) if isValue(v1) => if(toBoolean(v1)) e2 else v1
+      case Binary(Or, v1, e2) if isValue(v1) => if(toBoolean(v1)) v1 else e2
+      
+      case If(v1, e2, e3) if isValue(v1) => if(toBoolean(v1)) e2 else e3
+      
+      case ConstDecl(x, v1, e1) if isValue(v1) => {
+        println("Inside ConstDecl")
+        substitute(e1, v1, x)
+      }
+      
+      /*
+      case Call(e1, e2) => eToVal(e1) match {
+        // where s1 in Function is e' in the judgement form - body of function
+        // Function evaluates using the value of e2 as its parameter
+        // case class Function(p: Option[String], x: String, e1: Expr) extends Expr
+      // def extend(env: Env, x: String, v: Expr): Env =
+        case Function(p, x, s1) => p match {    // p is of type Option, testing for whether the function name exists - refer to Function definition
+            case None => {
+              println("gets to case None")
+              eval(extend(env, x, eToVal(e2)), s1)    // evaluate body of function with parameter set to the thing being passed in, non-recursive functions
+            }
+            case Some(p1) => eval(extend(extend(env, p1, eToVal(e1)), x, eToVal(e2)), s1)
+          // p1 is of type string - name of the function
+          // if the function has a name, extend the environment with the extended
+          // environment of the name being set to e1, and the argument x being set
+          // to e2
         }
+        case _ => throw new DynamicTypeError(e)   // parameter e passed into eval()
       }
+      */
       
-      case Binary(And, v1, e2) if isValue(v1) => toBoolean(v1) match{
-        case true => e2
-        case _ => v1
-      }
-      
-      case Binary(Or, v1, e2) if isValue(v1) => toBoolean(v1) match{
-        case false => e2
-        case _ => v1
-      }
-      
-      case If(v1, e2, e3) if isValue(v1) => toBoolean(v1) match{
-        case true => e2
-        case false => e3
-      }
-
-      case ConstDecl(x, v1, e2) if isValue(v1) => {
-        substitute(e2, v1, x)
-      }
-      /* substitute takes: e: expr, v: expr, x: string */
-      
-      case Call(v1, v2) if isValue(v1) && isValue(v2) => v1 match{
-        /* Not recursive */
-        case Function(None, x, e) => {
-          substitute(e, v2, x)
+      case Call(v1, v2) if isValue(v1) && isValue(v2) => {
+        println("Hits base case Call")
+        v1 match {
+        case Function(None, x1, fbody) => substitute(fbody, v2, x1)
+        case Function(Some(name), x2, fbody) => substitute(substitute(fbody, v1, name), v2, x2)
+        
+        case _ => throw DynamicTypeError(e)
         }
-          /* Recursive */
-        case Function(Some(f), x2, fbody) => {  
-          substitute(substitute(fbody, v1, f), v2, x2)
-         }
-        case _ => throw new DynamicTypeError(e)
       }
       
       /* Inductive Cases: Search Rules */
       case Print(e1) => Print(step(e1))
       
         // ****** Your cases here
-     
+      case Unary(uop, e1) => Unary(uop, step(e1))
+        
       case Binary(bop, e1, e2) => e1 match {
-   
-        case N(_) | B(_) | Undefined | S(_) | Function(_, _, _) => Binary(bop, e1, step(e2))
+        case N(_) | B(_) | S(_) | Function(_,_,_) | Undefined => Binary(bop, e1, step(e2))
         case _ => Binary(bop, step(e1), e2)
       }
-      case Unary(uop, e1) => Unary(uop, step(e1))
-      
+        
       case If(e1, e2, e3) => If(step(e1), e2, e3)
-      
-      case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
-      
-      case Call(e1, e2) => (e1, e2) match {
-        case (Function(_,_,_), s2) =>  Call(e1, step(s2))
+          
+      case ConstDecl(x1, e1, e2) => ConstDecl(x1, step(e1), e2)
+        
+      case Call(e1, e2) => {
+        println("Hits inductive Call")
+        (e1, e2) match {
+        case (Function(_,_,_), s2) => Call(e1, step(s2))
         case (s1, _) => Call(step(s1), e2)
+        }
       }
+      
+      // what the heck is this doing???
       
       /* Cases that should never match. Your cases above should ensure this. */
       case Var(_) => throw new AssertionError("Gremlins: internal error, not closed expression.")
