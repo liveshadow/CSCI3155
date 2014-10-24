@@ -16,24 +16,13 @@
 [0m[[0minfo[0m] [0mCompiling 1 Scala source to /Users/Olivia/Dropbox/CSCI3155/Lab3/target/scala-2.10/classes...[0m
 [0m[[0mdebug[0m] [0mGetting compiler-interface from component compiler for Scala 2.10.3[0m
 [0m[[0mdebug[0m] [0mGetting compiler-interface from component compiler for Scala 2.10.3[0m
-[0m[[0mdebug[0m] [0mRunning cached compiler 6493a8fa, interfacing (CompilerInterface) with Scala compiler version 2.10.3[0m
+[0m[[0mdebug[0m] [0mRunning cached compiler 4d0155fb, interfacing (CompilerInterface) with Scala compiler version 2.10.3[0m
 [0m[[0mdebug[0m] [0mCalling Scala compiler with arguments  (CompilerInterface):[0m
 [0m[[0mdebug[0m] [0m	-bootclasspath[0m
 [0m[[0mdebug[0m] [0m	/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsfd.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Frameworks/JavaRuntimeSupport.framework/Resources/Java/JavaRuntimeSupport.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/ui.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/laf.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/sunrsasign.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsse.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jce.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/charsets.jar:/Users/Olivia/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.10.3.jar[0m
 [0m[[0mdebug[0m] [0m	-classpath[0m
 [0m[[0mdebug[0m] [0m	/Users/Olivia/Dropbox/CSCI3155/Lab3/target/scala-2.10/classes:/Users/Olivia/Dropbox/CSCI3155/Lab3/lib/liblab3.jar:/Users/Olivia/Dropbox/CSCI3155/Lab3/lib/scalatest_2.10-2.0.jar[0m
-[0m[[33mwarn[0m] [0m/Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala:225: a pure expression does nothing in statement position; you may be omitting necessary parentheses[0m
-[0m[[33mwarn[0m] [0m      case Binary(Seq, v1, e2) if isValue(v1) => v1; e2[0m
-[0m[[33mwarn[0m] [0m                                                 ^[0m
-[0m[[33mwarn[0m] [0mone warning found[0m
-[0m[[0mdebug[0m] [0mScala compilation took 17.257224 s[0m
-[0m[[0mdebug[0m] [0mInvalidating /Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala...[0m
-[0m[[0mdebug[0m] [0mInvalidating (transitively) by inheritance from /Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala...[0m
-[0m[[0mdebug[0m] [0mInitial set of included nodes: Set(/Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala)[0m
-[0m[[0mdebug[0m] [0mInvalidated by transitive inheritance dependency: Set(/Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala)[0m
-[0m[[0mdebug[0m] [0mThe /Users/Olivia/Dropbox/CSCI3155/Lab3/src/main/scala/Lab3.scala source file has the following regular definitions changed:[0m
-[0m[[0mdebug[0m] [0m	equalityVal.[0m
-[0m[[0mdebug[0m] [0mAll member reference dependencies will be considered within this context.[0m
+[0m[[0mdebug[0m] [0mScala compilation took 31.011072 s[0m
 [0m[[0mdebug[0m] [0mNew invalidations:[0m
 [0m[[0mdebug[0m] [0m	Set()[0m
 [0m[[0mdebug[0m] [0mInitial set of included nodes: Set()[0m

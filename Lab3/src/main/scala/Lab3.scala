@@ -200,18 +200,21 @@ object Lab3 extends jsy.util.JsyApplication {
     require(isValue(v))
     /* Simple helper that calls substitute on an expression
      * with the input value v and variable name x in function body. */
+    //if (debug)
+    //  println("Substituting " + v + "for " + x + "in " + e)
+
     def subst(e: Expr): Expr = substitute(e, v, x)
     /* Body */
     e match {
-      case N(_) | B(_) | Undefined | S(_) | Function(_,_,_) => e
+      case N(_) | B(_) | S(_) | Undefined => e
       case Print(e1) => Print(subst(e1))
       case Var(x1) => if(x1 == x) v else Var(x1)
 
-      /*
-      case Function(p, x1, e1) => p match {
-        case None => if (x1 == x) v else subst(e1)
-        case Some(p) => if (x1 == x) 
-      } */
+      case Function(name, x1, fbody) => name match {
+        case None => if (x1 == x) e else Function(None, x1, subst(fbody))
+        case Some(f) => if (f == x) e else if (x1 == x) e else Function(name, x1, subst(fbody))
+      }
+      // why does this work?
 
       case Unary(uop, e1) => Unary(uop, subst(e1))
       case Binary(bop, e1, e2) => Binary(bop, subst(e1), subst(e2))
@@ -242,7 +245,7 @@ object Lab3 extends jsy.util.JsyApplication {
         (v1, v2) match {
           case (S(v1), _) => S(v1 + toStr(v2))
           case (_, S(v2)) => S(toStr(v1) + v2)
-          case _ => N(toNumber(v1) + toNumber(v2))
+          case (_,_) => N(toNumber(v1) + toNumber(v2))
         }
       }
       
