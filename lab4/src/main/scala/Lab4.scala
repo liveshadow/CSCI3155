@@ -39,7 +39,8 @@ object Lab4 extends jsy.util.JsyApplication {
   def compressRec[A](l: List[A]): List[A] = l match {
     case Nil | _ :: Nil => l
     case h1 :: (t1 @ (h2 :: _)) => if (h1 == h2) compressRec(t1) else h1 :: compressRec(t1)
-    // where t1 is the name of the thing after the @ sign 
+    // where t1 is the name of the thing after the @ sign
+    // and h2 onward is the tail of the list
   }
   
   def compressFold[A](l: List[A]): List[A] = l.foldRight(Nil: List[A]) {
@@ -344,7 +345,7 @@ object Lab4 extends jsy.util.JsyApplication {
             }
             p match {
               case None => e1p
-              case Some(x1) => substitute(e1p, v1, x1)
+              case Some(x1) => substitute(e1p, v1, x1) 
             }
           }
           case _ => throw new StuckError(e)

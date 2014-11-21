@@ -6,12 +6,13 @@ Partner: Catherine Dewerd
 
 #### 1. 
 
+const x = 1
 const plusN = function (n) { return
 function f(x) { return x + n };
 };
 plusN(5)
 
-The above test case behaves differently under dynamic versus static scoping - with dynamic, it will throw an error because x is not previously defined, whereas with static scoping it will return "x + 5", because x is interpreted as a string.
+The above test case behaves differently under dynamic versus static scoping - assuming that the above code is part of a greater program, under static scoping, the function call of plusN(5) will pull the x = 1 from the previous scope, whereas with dynamic scoping, the x that is used may not be that particular x; it could be any x that used previously in any scope in the program.
 
 #### 2.
 

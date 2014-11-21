@@ -27,7 +27,7 @@ class Lab4Spec extends FlatSpec {
 
   "strictlyOrdered" should "check strict ordering of a binary search tree" in {
     assert(!strictlyOrdered(treeFromList(List(1,1,2))))
-    assert(strictlyOrdered(treeFromList(List(1,2))))
+    assert(strictlyOrdered(treeFromList(List(1,2, 4, 7, 10))))
   } 
 
   // Probably want to write some tests for typeInfer, substitute, and step.
