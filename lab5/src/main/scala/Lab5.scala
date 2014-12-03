@@ -36,10 +36,10 @@ object Lab5 extends jsy.util.JsyApplication {
   
   // Just like mapFirst from Lab 4 but uses a callback f that returns a DoWith in the Some case.
   def mapFirstWith[W,A](f: A => Option[DoWith[W,A]])(l: List[A]): DoWith[W,List[A]] = l match {
-    case Nil => throw new UnsupportedOperationException
+    case Nil => doreturn(l)
     case h :: t => f(h) match {
-      case None => throw new UnsupportedOperationException
-      case Some(withhp) => throw new UnsupportedOperationException
+      case None => mapFirstWith(f)(t).map((modList: List[A]) => (h :: modList))
+      case Some(withhp) => withhp.map((newValueMapped: A) => (newValueMapped::t))
     }
   }
 
@@ -48,7 +48,14 @@ object Lab5 extends jsy.util.JsyApplication {
   def castOk(t1: Typ, t2: Typ): Boolean = (t1, t2) match {
     case (TNull, TObj(_)) => true
     case (_, _) if (t1 == t2) => true
-    case (TObj(fields1), TObj(fields2)) => throw new UnsupportedOperationException
+    case (TObj(fields1), TObj(fields2)) => fields1.forall {
+      case (str, ty) => if (ty == None) true else fields2.get(str) match 
+      {
+        case None => false
+        case Some(ty2) => castOk(ty, ty2)
+      }
+      // where ty is short for type and str is the string in fields1 and fields2
+    }
     case (TInterface(tvar, t1p), _) => castOk(typSubstitute(t1p, t1, tvar), t2)
     case (_, TInterface(tvar, t2p)) => castOk(t1, typSubstitute(t2p, t2, tvar))
     case _ => false
@@ -62,7 +69,7 @@ object Lab5 extends jsy.util.JsyApplication {
     case _ => false
   } 
     
-  def mut(m: PMode): Mutability = m match {
+  def mut(m: PMode): Mutability = m match {   // function for storing the mutability
     case PName => MConst
     case PVar | PRef => MVar
   }
@@ -84,10 +91,12 @@ object Lab5 extends jsy.util.JsyApplication {
         case TNumber => TNumber
         case tgot => err(tgot, e1)
       }
+
       case Unary(Not, e1) => typ(e1) match {
         case TBool => TBool
         case tgot => err(tgot, e1)
       }
+
       case Binary(Plus, e1, e2) => typ(e1) match {
         case TNumber => typ(e2) match {
           case TNumber => TNumber
@@ -99,6 +108,7 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         case tgot => err(tgot, e1)
       }
+
       case Binary(Minus|Times|Div, e1, e2) => typ(e1) match {
         case TNumber => typ(e2) match {
           case TNumber => TNumber
@@ -106,6 +116,7 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         case tgot => err(tgot, e1)
       }
+
       case Binary(Eq|Ne, e1, e2) => typ(e1) match {
         case t1 if !hasFunctionTyp(t1) => typ(e2) match {
           case t2 if (t1 == t2) => TBool
@@ -113,6 +124,7 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         case tgot => err(tgot, e1)
       }
+
       case Binary(Lt|Le|Gt|Ge, e1, e2) => typ(e1) match {
         case TNumber => typ(e2) match {
           case TNumber => TBool
@@ -124,6 +136,7 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         case tgot => err(tgot, e1)
       }
+
       case Binary(And|Or, e1, e2) => typ(e1) match {
         case TBool => typ(e2) match {
           case TBool => TBool
@@ -131,7 +144,9 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         case tgot => err(tgot, e1)
       }
+
       case Binary(Seq, e1, e2) => typ(e1); typ(e2)
+      
       case If(e1, e2, e3) => typ(e1) match {
         case TBool =>
           val (t2, t3) = (typ(e2), typ(e3))
@@ -139,6 +154,7 @@ object Lab5 extends jsy.util.JsyApplication {
         case tgot => err(tgot, e1)
       }
       case Obj(fields) => TObj(fields map { case (f,t) => (f, typ(t)) })
+      
       case GetField(e1, f) => typ(e1) match {
         case TObj(tfields) if (tfields.contains(f)) => tfields(f)
         case tgot => err(tgot, e1)
@@ -156,8 +172,17 @@ object Lab5 extends jsy.util.JsyApplication {
         }
         // Bind to env2 an environment that extends env1 with the parameters.
         val env2 = paramse match {
-          case Left(params) => throw new UnsupportedOperationException
-          case Right((mode,x,t)) => throw new UnsupportedOperationException
+          // Left does not handle mutability - just the regular stuff
+          case Left(params) => params.foldLeft(env1)((environment, tup) => tup match {
+            case (currVar, currTy) => environment + (currVar -> (MConst, currTy))
+          })
+          // Right handles mutatbilty - wacky
+          case Right((mode,x,t)) => mode match {
+            case PName => env1 + (x -> (MConst, t))
+            case PVar => env1 + (x -> (MVar, t))
+            case PRef => env1 + (x -> (MVar, t))
+          }
+          
         }
         // Infer the type of the function body
         val t1 = typeInfer(env2, e1)
@@ -168,17 +193,50 @@ object Lab5 extends jsy.util.JsyApplication {
       case Call(e1, args) => typ(e1) match {
         case TFunction(Left(params), tret) if (params.length == args.length) => {
           (params, args).zipped.foreach {
-            throw new UnsupportedOperationException
+              (paramX, argsY) => (paramX, argsY) match {      // where params is itself a tuple
+              case ((str, paramType), argType) => if (paramType != typ(argType)) err(paramType, argType)
+              }
           }
           tret
         }
-        case tgot @ TFunction(Right((mode,_,tparam)), tret) =>
-          throw new UnsupportedOperationException
+        case tgot @ TFunction(Right((mode,_,tparam)), tret) => mode match {
+          case PRef => args match {
+            case h::Nil => if (typ(h) == tparam && isLExpr(h)) tret else err(tgot, e1)
+            case _ => err(tgot, e1)
+          }
+          case _ => args match {
+            case h::Nil => if (typ(h) == tparam) tret else err(tgot, e1)
+            case _ => err(tgot, e1)
+          }          
+        }
         case tgot => err(tgot, e1)
       }
       
       /*** Fill-in more cases here. ***/
-        
+
+      case Decl(mut, x, e1, e2) => typeInfer(env + (x -> (mut, typ(e1))), e2)   // extending the environment so that
+      // x now equals e1, i.e. x is our variable, we need to set it equal to something so that it can be recognized in
+      // the scope of e2, and then evaluate e2
+
+      case Assign(Var(x), e2) => env.get(x) match {
+        case None => err(typ(Var(x)), Var(x))
+        case Some((MConst, _)) => err(typ(Var(x)), Var(x))    // don't want x to be a const
+        case Some(_) => typ(e2)   // at this point know x is present in env and it is not a const, so return the type
+        // of e2
+      }
+
+      case Assign(GetField(e1, f), e2) => e1 match {
+        case Obj(fields) => fields.get(f) match {
+          case None => err(typ(e1), e1)
+          case Some(expr) => if(typ(expr) == typ(e2)) typ(e2) else err(typ(expr), expr)
+        }
+        case _ => err(typ(e1), e1)
+      }
+
+      case Null => TNull
+
+      case Unary(Cast(t), e1) => if (castOk(typ(e1), t)) t else err(typ(e1), e1)
+
       /* Should not match: non-source expressions or should have been removed */
       case A(_) | Unary(Deref, _) | InterfaceDecl(_, _, _) => throw new IllegalArgumentException("Gremlins: Encountered unexpected expression %s.".format(e))
     }
