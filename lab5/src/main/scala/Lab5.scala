@@ -48,13 +48,26 @@ object Lab5 extends jsy.util.JsyApplication {
   def castOk(t1: Typ, t2: Typ): Boolean = (t1, t2) match {
     case (TNull, TObj(_)) => true
     case (_, _) if (t1 == t2) => true
-    case (TObj(fields1), TObj(fields2)) => fields1.forall {
-      case (str, ty) => if (ty == None) true else fields2.get(str) match 
+    case (TObj(fields1), TObj(fields2)) => 
+    {
+      val fields1Ok = fields1.forall
       {
-        case None => false
-        case Some(ty2) => castOk(ty, ty2)
+        case (str, ty) => if (ty == None) true else fields2.get(str) match 
+        {
+          case None => false
+          case Some(ty2) => castOk(ty, ty2)
+        }
       }
-      // where ty is short for type and str is the string in fields1 and fields2
+      val fields2Ok = fields2.forall
+      {
+        case (str, ty) => if (ty == None) true else fields1.get(str) match 
+        {
+          case None => false
+          case Some(ty2) => castOk(ty, ty2)
+        }
+      }
+      fields1Ok || fields2Ok
+      // where ty is short for type and str is the string in fields1 and fields2  
     }
     case (TInterface(tvar, t1p), _) => castOk(typSubstitute(t1p, t1, tvar), t2)
     case (_, TInterface(tvar, t2p)) => castOk(t1, typSubstitute(t2p, t2, tvar))
@@ -218,18 +231,25 @@ object Lab5 extends jsy.util.JsyApplication {
       // x now equals e1, i.e. x is our variable, we need to set it equal to something so that it can be recognized in
       // the scope of e2, and then evaluate e2
 
-      case Assign(Var(x), e2) => env.get(x) match {
-        case None => err(typ(Var(x)), Var(x))
-        case Some((MConst, _)) => err(typ(Var(x)), Var(x))    // don't want x to be a const
-        case Some(_) => typ(e2)   // at this point know x is present in env and it is not a const, so return the type
-        // of e2
-      }
-
-      case Assign(GetField(e1, f), e2) => e1 match {
-        case Obj(fields) => fields.get(f) match {
-          case None => err(typ(e1), e1)
-          case Some(expr) => if(typ(expr) == typ(e2)) typ(e2) else err(typ(expr), expr)
+      case Assign(e1, e2) => e1 match
+      {
+        case Var(x) => env.get(x) match
+        {
+          case None => err(typ(Var(x)), Var(x))
+          case Some((MConst, _)) => err(typ(Var(x)), Var(x))    // don't want x to be a const
+          case Some((MVar, t)) => if (t == typ(e2)) t else err(typ(e1), e1)   // at this point know x is present 
+          // in env and it is not a const, so return the type of e2
+          case _ => err(typ(e1), e1)
         }
+        case GetField(e3, f) => typ(e3) match
+        {
+          case TObj(fields) => fields.get(f) match
+          {
+            case None => err(typ(e3), e3)
+            case Some(t) => if(t == typ(e2)) typ(e2) else err(typ(e1), e1)
+          }
+          case _ => err(typ(e3), e3)
+        }  
         case _ => err(typ(e1), e1)
       }
 
@@ -268,7 +288,7 @@ object Lab5 extends jsy.util.JsyApplication {
   /* Capture-avoiding substitution in e replacing variables x with esub. */
   def substitute(e: Expr, esub: Expr, x: String): Expr = {
     def subst(e: Expr): Expr = substitute(e, esub, x)
-    val ep: Expr = throw new UnsupportedOperationException
+    val ep: Expr = avoidCapture(freeVars(esub), e)
     ep match {
       case N(_) | B(_) | Undefined | S(_) | Null | A(_) => e
       case Print(e1) => Print(subst(e1))
@@ -277,8 +297,18 @@ object Lab5 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(subst(e1), subst(e2), subst(e3))
       case Var(y) => if (x == y) esub else e
       case Decl(mut, y, e1, e2) => Decl(mut, y, subst(e1), if (x == y) e2 else subst(e2))
-      case Function(p, paramse, retty, e1) =>
-        throw new UnsupportedOperationException
+      case Function(p, paramse, retty, e1) => paramse match {
+        case Left(params) => 
+        {
+          if (params.exists((t1:(String, Typ)) => t1._1 == x) || p == Some(x))
+            Function(p, Left(params), retty, e1)
+          else
+            Function(p, Left(params), retty, subst(e1))
+        }
+        case Right(mode, y, t) => 
+      }
+      
+        
       case Call(e1, args) => Call(subst(e1), args map subst)
       case Obj(fields) => Obj(fields map { case (fi,ei) => (fi, subst(ei)) })
       case GetField(e1, f) => GetField(subst(e1), f)
