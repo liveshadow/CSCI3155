@@ -337,13 +337,17 @@ object Lab4 extends jsy.util.JsyApplication {
       
       case Call(v1, args) if isValue(v1) && (args forall isValue) =>
         v1 match {
-          case Function(p, params, _, e1) => {
-            val e1p = (params, args).zipped.foldRight(e1){
-              (paramsX, acc) => paramsX match {
+          case Function(p, params, _, e1) =>
+          {
+            val e1p = (params, args).zipped.foldRight(e1)
+            {
+              (paramsX, acc) => paramsX match
+              {
                 case ((paramName, _), argVal) => substitute(acc, argVal, paramName)
               }
             }
-            p match {
+            p match
+            {
               case None => e1p
               case Some(x1) => substitute(e1p, v1, x1) 
             }

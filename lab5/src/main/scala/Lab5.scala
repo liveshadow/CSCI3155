@@ -7,7 +7,7 @@ object Lab5 extends jsy.util.JsyApplication {
    * Olivia Abrant
    * 
    * Partner: Erik Eakins
-   * Collaborators: Alok Joshi
+   * Collaborators: Alok Joshi, Jessica Lynch, Andrew Gordon, Michelle Soult, Catherine Dewerd, Kahini Wadhawan
    */
 
   /*
@@ -305,10 +305,13 @@ object Lab5 extends jsy.util.JsyApplication {
           else
             Function(p, Left(params), retty, subst(e1))
         }
-        case Right(mode, y, t) => 
+        case Right((mode, y, t)) =>
+        {
+          if (y == x && p == Some(x)) Function(p, paramse, retty, e1)
+          else Function(p, paramse, retty, subst(e1))
+        }
       }
-      
-        
+
       case Call(e1, args) => Call(subst(e1), args map subst)
       case Obj(fields) => Obj(fields map { case (fi,ei) => (fi, subst(ei)) })
       case GetField(e1, f) => GetField(subst(e1), f)
@@ -351,24 +354,103 @@ object Lab5 extends jsy.util.JsyApplication {
       case Binary(Div, N(n1), N(n2)) => doreturn( N(n1 / n2) )
       case If(B(b1), e2, e3) => doreturn( if (b1) e2 else e3 )
       case Obj(fields) if (fields forall { case (_, vi) => isValue(vi)}) =>
-        throw new UnsupportedOperationException
+        Mem.alloc(Obj(fields)) map {(a:A) => a:Expr}
+      // where Obj(fields)) == e
       case GetField(a @ A(_), f) =>
-        throw new UnsupportedOperationException
+      {
+        doget.map((m: Mem) => m.get(a) match
+        {
+          case Some(Obj(fields)) => fields.get(f) match
+          {
+            case Some(e1) => e1
+            case _ => throw StuckError(e)
+          }
+          case _ => throw StuckError(e)
+        })
+      }
         
       case Call(v1, args) if isValue(v1) =>
         def substfun(e1: Expr, p: Option[String]): Expr = p match {
           case None => e1
           case Some(x) => substitute(e1, v1, x)
         }
-        (v1, args) match {
+
+        (v1, args) match {    // v1 is the function, args is the list of arguments
+
           /*** Fill-in the DoCall cases, the SearchCall2, the SearchCallVar, the SearchCallRef  ***/
+          case (Function(p, paramse, retty, e1), h::arg) => paramse match {
+            // DoCall
+            case Left(params) if (args.forall(x => isValue(x)) && args.length == params.length) =>
+            {
+              val e1p = (params, args).zipped.foldRight(e1)((currEle, acc) => currEle match
+              {
+                case ((currParam, _), currArg) => substitute(acc, currArg, currParam)
+                // use substitute() to change that value at the key name in the map
+              })
+              /*{
+                (paramsX, acc) => paramsX match
+                {
+                  case ((paramName, _), argVal) => substitute(acc, argVal, paramName)
+                }
+              }*/
+
+              /* p match
+              {
+                case None => doreturn(e1p)
+                case Some(x1) => doreturn(substitute(e1p, v1, x1))
+              } */
+              // could just call substfun() instead of doing another match on p
+              doreturn(substfun(e1p, p))
+            }
+            
+            // SeachCall2
+            case Left(params) => // for (argsp <- mapFirstWith(stepIfNotValue)(args)) yield Call(v1, argsp)
+            // alternatively: for (x <- l) yield (2x) is the same as l map (x => 2x)
+            // for each x in m do 2x OR for each x in l, x becomes 2x
+
+            // use mapFirstWith because need to return an expression for Unary/Binary, so need to map specifically to the
+            // expression contained in the DoWith object
+
+              mapFirstWith(stepIfNotValue)(args) map (argsp => Call(v1, argsp))
+            
+            // DoCallVar
+            case Right((PVar, x, f)) if (argApplyable(PVar, h)) =>
+            {
+              Mem.alloc(h) map {a => substfun(substitute(e1, Unary(Deref, a), x), p)}
+            }
+            
+            // SearchCallVar 
+            case Right((PVar, x, f)) => for (argsp <- step(h)) yield Call(v1, argsp::Nil)
+            // step(h) map (argsp => Call(v1, argsp::Nil))
+
+            // DoCallRef
+            case Right((PRef, x, f)) if (argApplyable(PRef, h)) =>
+            {
+              doreturn(substfun(substitute(e1, h, x), p))
+            } 
+
+            // SearchCallRef
+            case Right((PRef, x, f)) =>
+            {
+              if (!isLValue(h)) for (argsp <- step(h)) yield Call(v1, argsp::Nil)
+              else throw StuckError(e)
+            }
+
+            // DoCallName
+            case Right((PName, x, f)) if (argApplyable(PName, h)) =>
+            {
+              doreturn(substfun(substitute(e1, h, x), p))
+            }
+          }
+          
           case _ => throw StuckError(e)
         } 
       
       case Decl(MConst, x, v1, e2) if isValue(v1) =>
-        throw new UnsupportedOperationException
+        doreturn(substitute(e2, v1, x)))
+      
       case Decl(MVar, x, v1, e2) if isValue(v1) =>
-        throw new UnsupportedOperationException
+        Mem.alloc(v1) map {a => substitute(e2, Unary(Deref, a), x)}
 
       case Assign(Unary(Deref, a @ A(_)), v) if isValue(v) =>
         for (_ <- domodify { (m: Mem) => (throw new UnsupportedOperationException): Mem }) yield v
@@ -391,12 +473,23 @@ object Lab5 extends jsy.util.JsyApplication {
         for (e1p <- step(e1)) yield If(e1p, e2, e3)
       case Obj(fields) => fields find { case (_, ei) => !isValue(ei) } match {
         case Some((fi,ei)) =>
-          throw new UnsupportedOperationException
+          for (eip <- step(ei)) yield Obj(fields + (fi -> eip))
         case None => throw StuckError(e)
       }
-      case GetField(e1, f) => throw new UnsupportedOperationException
+      case GetField(e1, f) => 
+        for (e1p <- step(e1)) yield GetField(e1p, f)
       
       /*** Fill-in more Search cases here. ***/
+
+      case Call(e1, args) => 
+        for (e1p <- step(e1)) yield Call(e1p, args)
+
+      case Decl(mut, x, e1, e2) =>
+        for (e1p <- step(e1)) yield Decl(mut, x, e1p, e2)
+
+      case Assign(e1, e2) =>
+        if (!isLValue(e1)) for (e1p <- step(e1)) yield Assign(e1p, e2)
+        else for (e2p <- step(e2)) yield Assign(e1, e2p)
 
       /* Everything else is a stuck error. */
       case _ => throw StuckError(e)

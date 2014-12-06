@@ -113,7 +113,7 @@ object ast {
    * 
    * Aside: This is also known as the State monad.
    */
-  sealed class DoWith[W,R](doer: W => (W,R)) {
+  sealed class DoWith[W,R](doer: W => (W,R)) {    // W is the Memory and R is the expression type
     def apply(w: W) = doer(w)
 
     def map[B](f: R => B): DoWith[W,B] = new DoWith[W,B]({
@@ -143,6 +143,7 @@ object ast {
     def get(key: A): Option[Expr] = map.get(key)
     def +(kv: (A, Expr)): Mem = new Mem(map + kv, nextAddr)
     def contains(key: A): Boolean = map.contains(key)
+    def isEmpty = map.isEmpty
     
     private def alloc(v: Expr): (Mem, A) = {
       val fresha = A(nextAddr)
