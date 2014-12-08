@@ -297,20 +297,23 @@ object Lab5 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(subst(e1), subst(e2), subst(e3))
       case Var(y) => if (x == y) esub else e
       case Decl(mut, y, e1, e2) => Decl(mut, y, subst(e1), if (x == y) e2 else subst(e2))
-      case Function(p, paramse, retty, e1) => paramse match {
-        case Left(params) => 
+      
+      case Function(p, paramse, retty, e1) =>
+        paramse match
         {
-          if (params.exists((t1:(String, Typ)) => t1._1 == x) || p == Some(x))
-            Function(p, Left(params), retty, e1)
-          else
-            Function(p, Left(params), retty, subst(e1))
+          case Left(params) => 
+          {
+            if (params.exists((t1:(String, Typ)) => t1._1 != x) && p != Some(x))
+              Function(p, Left(params), retty, subst(e1))
+            else
+              Function(p, Left(params), retty, e1)
+          }
+          case Right((mode, str, ty)) =>
+          {
+            if (str != x && p != Some(x)) Function(p, paramse, retty, subst(e1))
+            else Function(p, paramse, retty, e1)
+          }
         }
-        case Right((mode, y, t)) =>
-        {
-          if (y == x && p == Some(x)) Function(p, paramse, retty, e1)
-          else Function(p, paramse, retty, subst(e1))
-        }
-      }
 
       case Call(e1, args) => Call(subst(e1), args map subst)
       case Obj(fields) => Obj(fields map { case (fi,ei) => (fi, subst(ei)) })
@@ -406,7 +409,7 @@ object Lab5 extends jsy.util.JsyApplication {
             // SeachCall2
             case Left(params) => // for (argsp <- mapFirstWith(stepIfNotValue)(args)) yield Call(v1, argsp)
             // alternatively: for (x <- l) yield (2x) is the same as l map (x => 2x)
-            // for each x in m do 2x OR for each x in l, x becomes 2x
+            // for each x in l do 2x OR for each x in l, x becomes 2x
 
             // use mapFirstWith because need to return an expression for Unary/Binary, so need to map specifically to the
             // expression contained in the DoWith object
@@ -447,15 +450,56 @@ object Lab5 extends jsy.util.JsyApplication {
         } 
       
       case Decl(MConst, x, v1, e2) if isValue(v1) =>
-        doreturn(substitute(e2, v1, x)))
+        doreturn(substitute(e2, v1, x))
       
       case Decl(MVar, x, v1, e2) if isValue(v1) =>
         Mem.alloc(v1) map {a => substitute(e2, Unary(Deref, a), x)}
 
       case Assign(Unary(Deref, a @ A(_)), v) if isValue(v) =>
-        for (_ <- domodify { (m: Mem) => (throw new UnsupportedOperationException): Mem }) yield v
+      {
+        // for (_ <- domodify { (m: Mem) => (throw new UnsupportedOperationException): Mem }) yield v
+        // for ( _ <- domodify { (m:Mem) => (m + (a -> v)): Mem } yield v)
         
+        domodify { (m:Mem) => m + (a -> v) } map { _ => v }
+        
+        // remember: for (x <- l) yield (2x) is the same as l map (x => 2x)
+      }
+
+      case Assign(GetField(a @ A(_), f), v) if isValue(v) =>
+      {
+        for ( _ <- domodify
+        {
+          (m:Mem) =>
+          {
+            if (m.contains(a))
+            {
+              val obj = m(a)
+              val newObj = obj match
+              {
+                case Obj(fields) => Obj(fields + (f -> (v)))
+                case _ => throw StuckError(e)
+              }
+              m + (a -> newObj)
+            }
+            else m
+          }
+
+        }) yield v
+        /*
+        domodify { (m:Mem) => m(obj_a) match
+          {
+            case Obj(fields) => m + (Obj(a) -> Obj(fields(f, v)))
+            case _ => throw new UnsupportedOperationException
+          }
+        } map {_ => v} 
+        */
+      }
+
       /*** Fill-in more Do cases here. ***/
+
+      case Unary(Cast(t), e2) => if (e2 == Null) doreturn(Null) else doreturn(e2)
+
+      case Unary(Deref, a @ A(_)) => doget.map((m:Mem) => m.apply(a))
       
       /* Base Cases: Error Rules */
       /*** Fill-in cases here. ***/
@@ -476,7 +520,9 @@ object Lab5 extends jsy.util.JsyApplication {
           for (eip <- step(ei)) yield Obj(fields + (fi -> eip))
         case None => throw StuckError(e)
       }
+
       case GetField(e1, f) => 
+        if (e1 == Null) throw NullDereferenceError(e1)
         for (e1p <- step(e1)) yield GetField(e1p, f)
       
       /*** Fill-in more Search cases here. ***/
@@ -488,8 +534,8 @@ object Lab5 extends jsy.util.JsyApplication {
         for (e1p <- step(e1)) yield Decl(mut, x, e1p, e2)
 
       case Assign(e1, e2) =>
-        if (!isLValue(e1)) for (e1p <- step(e1)) yield Assign(e1p, e2)
-        else for (e2p <- step(e2)) yield Assign(e1, e2p)
+        if (isLValue(e1) && (!isLValue(e2))) for (e2p <- step(e2)) yield Assign(e1, e2p)
+        else for (e1p <- step(e1)) yield Assign(e1p, e2)
 
       /* Everything else is a stuck error. */
       case _ => throw StuckError(e)
